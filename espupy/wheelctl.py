@@ -38,6 +38,31 @@ def state2speed(accel, angle, start_speed):
 
 class WheelCtl:
 
+	CMD_DICT = {b'START'  : lambda s, value: s.start_tasklist(value),
+				b'TASK' : lambda s, value: s.set_task(value),
+				b'LIST' : lambda s, value: s.set_tasklist(value),
+				b'STOP' : lambda s, value: s.stop_tasklist(value)}
+
+	def cmd_handler(self, cmdl):
+		cmd = None
+		value = None
+		ansl = []
+		res = False
+		if len(cmdl) > 0:
+			cmd = cmdl[0]
+			ansl = [cmd]
+		if len(cmdl) > 1:
+			value = cmdl[1]
+		if cmd in WheelCtl.CMD_DICT.keys():
+			res = WheelCtl.CMD_DICT[cmd](self, value)
+		if res == True:
+			ansl += ['Accepted']
+		elif (res == False) or (res is None):
+			ansl += ['Denied']
+		else:
+			ansl += [res]
+		return ansl
+
 	def pwm_handler(self, pin):
 		self.cnt += 1
 
@@ -46,8 +71,13 @@ class WheelCtl:
 		self.speed = state2speed(self.accel, self.angle, self.task[1])
 		self.pwm.freq(speed2pwm(self.speed))
 		if self.angle >= self.task[0]:
-			self.stop_task()
+			self.stop_task(None)
 		print(self.angle, self.speed)
+
+	def set_one_task(self, task):
+		self.tasklist = [task]
+		self.task_cnt = 0
+		self.set_task(task)
 
 	def set_task(self, task):
 		if not(type(task) is list):
@@ -66,7 +96,7 @@ class WheelCtl:
 			return False
 		self.tasklist = taskl
 		self.task_cnt = 0
-		self.task = self.tasklist[0]
+		self.set_task(self.tasklist[0])
 		return True
 
 	def next_task(self):
@@ -76,29 +106,33 @@ class WheelCtl:
 			return True
 		return False
 
-	def start_task(self):
+	def start_task(self, v):
 		self.cnt = 0
 		self.cnt_last = 0
 		self.pin_en.off()
 		self.tmr.init(period=TMR_PERIOD_MS, mode=Timer.PERIODIC, callback=self.tmr_handler)
 		self.pwm.freq(speed2pwm(self.speed))
 		self.pwm.duty(512)
+		return True
 
-	def stop_task(self):
+	def stop_task(self, v):
 		if self.next_task():
-			self.start_task()
+			self.start_task(None)
 		else:
 			self.tmr.deinit()
 			self.pwm.deinit()
 			self.pin_en.on()
 		print("end", self.angle)
+		return True
 
 	def start_tasklist(self):
-		self.start_task()
+		self.task_cnt = 0
+		self.set_task(self.tasklist[0])
+		self.start_task(None)
 
 	def stop_tasklist(self):
-		self.tasklist = []
-		self.stop_task()
+		self.task_cnt = len(self.tasklist)
+		self.stop_task(None)
 
 	def setup(self):
 		self.isr.irq(trigger=Pin.IRQ_FALLING, handler=self.pwm_handler)

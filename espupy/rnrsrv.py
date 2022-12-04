@@ -9,7 +9,7 @@ WIFI_CONFIG_FILE = 'wifi.config'
 SSID_LABEL = 'ssid'
 PWD_LABEL = 'password'
 WIFI_AP_NAME = 'EspRnRap'
-WIFI_AP_PWD = 'hep239'
+WIFI_AP_PWD = 'hepchanin239'
 WIFI_AP_CH = 11
 WIFI_CONNECT_TIMEOUT = 10
 
@@ -79,7 +79,7 @@ class RnRserver:
 		self.station.active(False)
 		self.apoint.active(True)
 		time.sleep(1)
-		self.apoint.config(essid = WIFI_AP_NAME, channel = WIFI_AP_CH)
+		self.apoint.config(essid = WIFI_AP_NAME, password=WIFI_AP_PWD, channel = WIFI_AP_CH)
 		self.ip = self.apoint.ifconfig()[0]
 
 	def start_wifi(self):
