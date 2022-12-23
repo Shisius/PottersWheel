@@ -16,6 +16,9 @@ WIFI_CONNECT_TIMEOUT = 10
 TCP_SERVER_TIMEOUT = 1
 TCP_MSG_MAX_SIZE = 1024
 
+CONNECT_WIFI_CMD = b'ADDWIFI'
+REMOVE_WIFI_CMD = b'REMWIFI'
+
 def load_wifi_config():
 	wifis = []
 	if WIFI_CONFIG_FILE in os.listdir():
@@ -47,11 +50,68 @@ def add_wifi2config(wifi_settings):
 	f.close()
 	return True
 
+def reset_wificonfig(wifis):
+	if type(wifis) is list:
+		s = b''
+		for wifi_s in wifis:
+			if type(wifi_s) is not dict:
+				return False
+			if not (SSID_LABEL in wifi_s.keys()) or not (PWD_LABEL in wifi_s.keys()):
+				return False
+			s += MSG_DELIM
+			s += json.dumps(wifi_s)
+	else:
+		return False
+	if WIFI_CONFIG_FILE not in os.listdir():
+		return False
+	f = open(WIFI_CONFIG_FILE, 'wb')
+	f.write(s)
+	f.close()
+	return True
+
+def rem_wifi2config(ssid):
+	if type(ssid) is not bytes:
+		return False
+	ssid = ssid.decode('UTF-8')
+	wifis = load_wifi_config()
+	result = False
+	for wifi_d in wifis:
+		if type(wifi_d) is dict:
+			if SSID_LABEL in wifi_d.keys():
+				if wifi_d[SSID_LABEL] == ssid:
+					wifis.remove(wifi_d)
+					result = True
+	if not reset_wificonfig(wifis):
+		result = False
+	return result
+
+
 def echo_callback(msgl):
 	print(msgl)
 	return msgl
 
 class RnRserver:
+
+	CMD_DICT = {CONNECT_WIFI_CMD  : lambda s, value: s.wifi_connect(value),
+				REMOVE_WIFI_CMD : lambda s, value: s.wifi_remove(value)}
+
+	def cmd_handler(self, cmdl):
+		cmd = None
+		value = None
+		ansl = []
+		res = False
+		if len(cmdl) > 0:
+			cmd = cmdl[0]
+			ansl = [cmd]
+		if len(cmdl) > 1:
+			value = cmdl[1]
+		if cmd in RnRserver.CMD_DICT.keys():
+			res = RnRserver.CMD_DICT[cmd](self, value)
+		if res == True:
+			ansl += ['Accepted']
+		else:
+			ansl = False
+		return ansl
 
 	def wifi_connect(self, wifi_settings):
 		if type(wifi_settings) is not dict:
@@ -67,6 +127,9 @@ class RnRserver:
 				return True
 			time.sleep(1)
 		return False
+
+	def wifi_remove(self, ssid):
+		return rem_wifi2config(ssid)
 
 	def is_connected(self):
 		if self.apoint.active():
@@ -114,7 +177,8 @@ class RnRserver:
 						if not req:
 							break
 						if self.callback:
-							ans = self.callback(parse_rnr_msg(req))
+							msg = parse_rnr_msg(req)
+							ans = self.callback(msg)
 							self.cli_sock.send(create_rnr_msg(ans))
 					except OSError as e:
 						self._print("RECV OS ERROR", e)
