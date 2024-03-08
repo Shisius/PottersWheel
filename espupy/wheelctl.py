@@ -94,7 +94,7 @@ class WheelCtl:
 	def set_tasklist(self, taskl):
 		if len(taskl) == 0:
 			return False
-		self.tasklist = taskl
+		self.tasklist = taskl[:]
 		self.task_cnt = 0
 		self.set_task(self.tasklist[0])
 		return True
@@ -110,6 +110,10 @@ class WheelCtl:
 		self.cnt = 0
 		self.cnt_last = 0
 		self.pin_en.off()
+		#if (self.speed >= 0):
+		#	self.pin_dir.on()
+		#else:
+		#	self.pin_dir.off()
 		self.tmr.init(period=TMR_PERIOD_MS, mode=Timer.PERIODIC, callback=self.tmr_handler)
 		self.pwm.freq(speed2pwm(self.speed))
 		self.pwm.duty(512)

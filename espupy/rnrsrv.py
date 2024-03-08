@@ -162,7 +162,7 @@ class RnRserver:
 		self.start_wifi()
 		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.sock.settimeout(TCP_SERVER_TIMEOUT)
-		self.sock.bind(('', 9239))
+		self.sock.bind(('', RNR_TCP_PORT))
 		self.sock.listen(1)
 		while True:
 			try:
